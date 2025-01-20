@@ -5,51 +5,65 @@ from apikey import google_gemini_api_key  # Import the API key from the apikey.p
 # Initialize the Google Generative AI API with the imported API key
 genai.configure(api_key=google_gemini_api_key)
 
-# Define model generation configuration
-generation_config = {
-    "temperature": 0.9,
-    "top_p": 1,
-    "max_output_tokens": 2048,
-    "response_mime_type": "text/plain",
-}
-
-# Create the model object
-model = genai.GenerativeModel(
-    model_name="gemini-1.0-pro",
-    generation_config=generation_config,
-)
-
 # Streamlit Interface
-st.title("ASK AI👣")
+st.title("ASK AI 👣")
 
 # Get user input (question)
 user_input = st.text_input("Ask a question:")
 
-# Create a chat session and get a response when the user submits a question
-if st.button("Get Answer"):
+# Define a function to handle the chat session and responses
+def get_ai_response(question):
+    """Fetch response from Google Generative AI for a given question."""
     try:
-        # Check if the user_input is empty
-        if not user_input.strip():
+        # Ensure the question is not empty
+        if not question.strip():
             raise ValueError("Question cannot be empty. Please enter a question.")
 
-        # Start the chat session with the initial user question
-        chat_session = model.start_chat(
-            history=[
-                {"role": "user", "parts": [f"give me the big answer for whatever is asked\nquestion = {user_input}"]}
-            ]
+        # Define model generation configuration
+        generation_config = {
+            "temperature": 0.9,
+            "top_p": 1,
+            "max_output_tokens": 2048,
+            "response_mime_type": "text/plain",
+        }
+
+        # Start a chat session with the user's question
+        chat_session = genai.ChatModel(model="models/text-bison-001").start_chat(
+            context="You are an AI designed to provide detailed answers to any question."
         )
-        
-        # Send the question as a message to the model
-        response = chat_session.send_message(user_input)
+
+        # Send the user's question to the model
+        response = chat_session.send_message(
+            question,
+            generation_config=generation_config
+        )
+
+        return response.text
+
+    except ValueError as e:
+        # Raise validation errors
+        raise e
+
+    except Exception as e:
+        # Catch unexpected errors
+        raise RuntimeError(f"An error occurred while fetching the AI response: {str(e)}")
+
+# Handle user interaction
+if st.button("Get Answer"):
+    try:
+        # Get AI-generated response
+        ai_response = get_ai_response(user_input)
 
         # Display the answer on the Streamlit app
         st.subheader("Answer:")
-        st.write(response.text)
+        st.write(ai_response)
 
-    except ValueError as e:
-        # If the question is empty, show an error message
-        st.error(str(e))
-    
+    except ValueError as ve:
+        # Handle validation errors
+        st.error(str(ve))
+    except RuntimeError as re:
+        # Handle runtime errors
+        st.error(str(re))
     except Exception as e:
-        # Catch any other unexpected errors
-        st.error(f"An error occurred: {str(e)}")
+        # Handle any other unexpected errors
+        st.error(f"An unexpected error occurred: {str(e)}")
